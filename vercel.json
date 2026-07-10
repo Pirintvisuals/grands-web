@@ -1,6 +1,6 @@
 {
-  "routes": [
-    { "src": "/api/faq-agent", "dest": "/api/faq-agent.js" }
+  "rewrites": [
+    { "source": "/api/faq-agent", "destination": "/api/faq-agent.js" }
   ],
   "headers": [
     {
