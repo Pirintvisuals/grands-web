@@ -1,6 +1,4 @@
 {
-  "buildCommand": "",
-  "outputDirectory": ".",
   "rewrites": [
     { "source": "/api/faq-agent", "destination": "/api/faq-agent.js" }
   ],
