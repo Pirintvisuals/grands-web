@@ -45,14 +45,29 @@ const MODEL = {
         other:   { low: 100, high: 350 }, // general plumbing
     },
 
+    // Gas safety certificate (CP12)
+    gasSafeCert: {
+        single:   { low: 65,  high: 90  }, // 1 appliance (standard boiler)
+        multiple: { low: 90,  high: 180 }, // 2-5 appliances (HMO / commercial)
+    },
+
+    // Bathroom fitting
+    bathroomFitting: {
+        fixtures: { low: 600,  high: 1400 }, // fit customer-supplied suite only
+        partial:  { low: 1500, high: 3500 }, // fixtures + tiling + minor replumb
+        full:     { low: 3500, high: 7500 }, // full strip-out, replumb, tiling, all fixtures
+    },
+
     commercialMult: 1.15,
 };
 
 const FLOW_LABEL = {
-    boilerInstall: "Boiler installation",
-    boilerService: "Boiler service / repair",
-    heating:       "Heating issue",
-    plumbing:      "Plumbing problem",
+    boilerInstall:   "Boiler installation",
+    boilerService:   "Boiler service / repair",
+    heating:         "Heating issue",
+    plumbing:        "Plumbing problem",
+    gasSafeCert:     "Gas safety certificate (CP12)",
+    bathroomFitting: "Bathroom fitting",
 };
 
 const CALENDLY = process.env.CALENDLY_URL || "https://calendly.com/pirint-milan/quoting-agent-sample";
@@ -186,6 +201,24 @@ function buildQuote(sel) {
         }[hi];
         items.push(makeItemExplicit(label, h.low, h.high));
 
+    } else if (pt === "gasSafeCert") {
+        const cs = ["single", "multiple"].includes(sel.certScope) ? sel.certScope : "single";
+        const g  = MODEL.gasSafeCert[cs];
+        const label = cs === "multiple"
+            ? "Gas safety inspection & CP12 certificate (multiple appliances / HMO)"
+            : "Gas safety inspection & CP12 certificate (single appliance)";
+        items.push(makeItemExplicit(label, g.low, g.high));
+
+    } else if (pt === "bathroomFitting") {
+        const bs = ["fixtures", "partial", "full"].includes(sel.bathroomScope) ? sel.bathroomScope : "partial";
+        const b  = MODEL.bathroomFitting[bs];
+        const label = {
+            fixtures: "Fit customer-supplied bathroom suite (labour only)",
+            partial:  "Partial bathroom refit (fixtures, tiling & plumbing alterations)",
+            full:     "Full bathroom renovation (strip-out, replumb, tiling & all fixtures)",
+        }[bs];
+        items.push(makeItemExplicit(label, b.low, b.high));
+
     } else {
         // plumbing
         const pi = ["leaking", "blocked", "toilet", "other"].includes(sel.plumbingIssue) ? sel.plumbingIssue : "other";
@@ -211,11 +244,13 @@ function buildQuote(sel) {
 // ---------------------------------------------------------------------------
 function projectFields(pt) {
     switch (pt) {
-        case "boilerInstall":  return ["property", "tier"];
-        case "boilerService":  return ["property", "jobSubType"];
-        case "heating":        return ["property", "heatingIssue"];
-        case "plumbing":       return ["property", "plumbingIssue"];
-        default:               return [];
+        case "boilerInstall":   return ["property", "tier"];
+        case "boilerService":   return ["property", "jobSubType"];
+        case "heating":         return ["property", "heatingIssue"];
+        case "plumbing":        return ["property", "plumbingIssue"];
+        case "gasSafeCert":     return ["property", "certScope"];
+        case "bathroomFitting": return ["property", "bathroomScope"];
+        default:                return [];
     }
 }
 
@@ -241,23 +276,27 @@ function isQuoteReady(s) {
 }
 
 const CHIP_LABELS = {
-    projectType:   ["New boiler (install / replace)", "Boiler service or repair", "Heating issue (radiators, pipes)", "Plumbing problem (leak, drain, tap)"],
-    property:      ["Domestic (home)", "Commercial (business)", "Not sure"],
-    tier:          ["Budget-friendly", "Mid-range", "Premium / high-efficiency", "Not sure"],
-    jobSubType:    ["Annual service", "Breakdown / repair"],
-    heatingIssue:  ["Cold radiators", "Power flush / system clean", "Add a new radiator", "Something else"],
-    plumbingIssue: ["Leaking tap or pipe", "Blocked drain or toilet", "Toilet fault", "Something else"],
-    timeline:      ["As soon as possible", "Within 2 weeks", "Within a month", "Just planning ahead"],
+    projectType:    ["Boiler service", "Boiler repair", "Bathroom fitting", "Gas safety certificate (CP12)", "New boiler (install / replace)", "Heating issue (radiators, pipes)", "Plumbing problem (leak, drain, tap)"],
+    property:       ["Domestic (home)", "Commercial (business)", "Not sure"],
+    tier:           ["Budget-friendly", "Mid-range", "Premium / high-efficiency", "Not sure"],
+    jobSubType:     ["Annual service", "Breakdown / repair"],
+    heatingIssue:   ["Cold radiators", "Power flush / system clean", "Add a new radiator", "Something else"],
+    plumbingIssue:  ["Leaking tap or pipe", "Blocked drain or toilet", "Toilet fault", "Something else"],
+    certScope:      ["Single appliance (standard home)", "Multiple appliances or HMO"],
+    bathroomScope:  ["Fit supplied fixtures", "Partial refit (fixtures + tiling)", "Full bathroom renovation"],
+    timeline:       ["As soon as possible", "Within 2 weeks", "Within a month", "Just planning ahead"],
 };
 
 const CHOICE_VALUES = {
-    projectType:   { "new boiler (install / replace)": "boilerInstall", "boiler service or repair": "boilerService", "heating issue (radiators, pipes)": "heating", "plumbing problem (leak, drain, tap)": "plumbing" },
-    property:      { "domestic (home)": "domestic", "commercial (business)": "commercial", "not sure": "not_sure" },
-    tier:          { "budget-friendly": "budget", "mid-range": "mid", "premium / high-efficiency": "premium", "not sure": "not_sure" },
-    jobSubType:    { "annual service": "service", "breakdown / repair": "repair" },
-    heatingIssue:  { "cold radiators": "cold_rads", "power flush / system clean": "power_flush", "add a new radiator": "new_rads", "something else": "other" },
-    plumbingIssue: { "leaking tap or pipe": "leaking", "blocked drain or toilet": "blocked", "toilet fault": "toilet", "something else": "other" },
-    timeline:      { "as soon as possible": "t_asap", "within 2 weeks": "t_2weeks", "within a month": "t_month", "just planning ahead": "t_planning" },
+    projectType:    { "boiler service": "boilerService", "boiler repair": "boilerService", "bathroom fitting": "bathroomFitting", "gas safety certificate (cp12)": "gasSafeCert", "new boiler (install / replace)": "boilerInstall", "boiler service or repair": "boilerService", "heating issue (radiators, pipes)": "heating", "plumbing problem (leak, drain, tap)": "plumbing" },
+    property:       { "domestic (home)": "domestic", "commercial (business)": "commercial", "not sure": "not_sure" },
+    tier:           { "budget-friendly": "budget", "mid-range": "mid", "premium / high-efficiency": "premium", "not sure": "not_sure" },
+    jobSubType:     { "annual service": "service", "breakdown / repair": "repair", "boiler repair": "repair", "boiler service": "service" },
+    heatingIssue:   { "cold radiators": "cold_rads", "power flush / system clean": "power_flush", "add a new radiator": "new_rads", "something else": "other" },
+    plumbingIssue:  { "leaking tap or pipe": "leaking", "blocked drain or toilet": "blocked", "toilet fault": "toilet", "something else": "other" },
+    certScope:      { "single appliance (standard home)": "single", "multiple appliances or hmo": "multiple" },
+    bathroomScope:  { "fit supplied fixtures": "fixtures", "partial refit (fixtures + tiling)": "partial", "full bathroom renovation": "full" },
+    timeline:       { "as soon as possible": "t_asap", "within 2 weeks": "t_2weeks", "within a month": "t_month", "just planning ahead": "t_planning" },
 };
 
 function chipsFor(field) { return CHIP_LABELS[field] || []; }
@@ -335,20 +374,22 @@ function nextChips(sel) {
 //  Labels and recap
 // ---------------------------------------------------------------------------
 const LABELS = {
-    projectType:   { boilerInstall: "Boiler installation", boilerService: "Boiler service / repair", heating: "Heating issue", plumbing: "Plumbing problem" },
-    property:      { domestic: "Domestic (home)", commercial: "Commercial (business)", not_sure: "Not sure" },
-    tier:          { budget: "Budget-friendly", mid: "Mid-range", premium: "Premium / high-efficiency", not_sure: "Not sure (default: mid-range)" },
-    jobSubType:    { service: "Annual service", repair: "Breakdown / repair" },
-    heatingIssue:  { cold_rads: "Cold radiators", power_flush: "Power flush / system clean", new_rads: "Add a new radiator", other: "Something else" },
-    plumbingIssue: { leaking: "Leaking tap or pipe", blocked: "Blocked drain or toilet", toilet: "Toilet fault", other: "Something else" },
-    timeline:      { t_asap: "As soon as possible", t_2weeks: "Within 2 weeks", t_month: "Within a month", t_planning: "Just planning ahead" },
+    projectType:    { boilerInstall: "Boiler installation", boilerService: "Boiler service / repair", heating: "Heating issue", plumbing: "Plumbing problem", gasSafeCert: "Gas safety certificate (CP12)", bathroomFitting: "Bathroom fitting" },
+    property:       { domestic: "Domestic (home)", commercial: "Commercial (business)", not_sure: "Not sure" },
+    tier:           { budget: "Budget-friendly", mid: "Mid-range", premium: "Premium / high-efficiency", not_sure: "Not sure (default: mid-range)" },
+    jobSubType:     { service: "Annual service", repair: "Breakdown / repair" },
+    heatingIssue:   { cold_rads: "Cold radiators", power_flush: "Power flush / system clean", new_rads: "Add a new radiator", other: "Something else" },
+    plumbingIssue:  { leaking: "Leaking tap or pipe", blocked: "Blocked drain or toilet", toilet: "Toilet fault", other: "Something else" },
+    certScope:      { single: "Single appliance (standard home)", multiple: "Multiple appliances or HMO" },
+    bathroomScope:  { fixtures: "Fit supplied fixtures", partial: "Partial refit (fixtures + tiling)", full: "Full bathroom renovation" },
+    timeline:       { t_asap: "As soon as possible", t_2weeks: "Within 2 weeks", t_month: "Within a month", t_planning: "Just planning ahead" },
 };
 
 function lbl(group, key) {
     return (LABELS[group] && LABELS[group][key]) || key || "-";
 }
 
-const CHOICE_FIELDS = ["projectType", "property", "tier", "jobSubType", "heatingIssue", "plumbingIssue", "timeline"];
+const CHOICE_FIELDS = ["projectType", "property", "tier", "jobSubType", "heatingIssue", "plumbingIssue", "certScope", "bathroomScope", "timeline"];
 
 function sanitizeChoices(s) {
     if (!s || typeof s !== "object") return s;
@@ -367,6 +408,8 @@ function summaryPairs(sel) {
     if (pt === "boilerService" && has("jobSubType")) p.push(["Job type", lbl("jobSubType", sel.jobSubType)]);
     if (pt === "heating" && has("heatingIssue")) p.push(["Issue", lbl("heatingIssue", sel.heatingIssue)]);
     if (pt === "plumbing" && has("plumbingIssue")) p.push(["Issue", lbl("plumbingIssue", sel.plumbingIssue)]);
+    if (pt === "gasSafeCert" && has("certScope")) p.push(["Certificate type", lbl("certScope", sel.certScope)]);
+    if (pt === "bathroomFitting" && has("bathroomScope")) p.push(["Scope", lbl("bathroomScope", sel.bathroomScope)]);
     if (has("timeline")) p.push(["Timing", lbl("timeline", sel.timeline)]);
     return p;
 }
@@ -405,6 +448,8 @@ function renderCustomerQuote(quote, sel) {
     else if (pt === "boilerService" && sel.jobSubType === "service") includes = "a full Gas Safe inspection, clean and service certificate";
     else if (pt === "boilerService") includes = "a diagnostic callout plus the likely parts and labour to fix the fault";
     else if (pt === "heating") includes = "investigation and the likely parts and labour for the heating issue described";
+    else if (pt === "gasSafeCert") includes = "a Gas Safe inspection of all relevant appliances and issue of the CP12 landlord / safety certificate";
+    else if (pt === "bathroomFitting") includes = "all labour as described; materials and fixtures are included only where noted above";
     else includes = "a callout plus the likely parts and labour to fix the plumbing problem";
 
     const nextBubble = [
@@ -453,11 +498,15 @@ IMPORTANT: the system has already greeted the customer - do NOT greet again, sta
 
 === QUESTION 0 - ALWAYS FIRST ===
 projectType - **bold** question: "What can we help you with today?", with bullets:
+• **Boiler service** - annual Gas Safe inspection and certificate
+• **Boiler repair** - breakdown or fault code showing
+• **Bathroom fitting** - full fit-out or renovation
+• **Gas safety certificate (CP12)** - for landlords and HMOs
 • **New boiler** - supply and install a replacement boiler
-• **Boiler service or repair** - annual service or a breakdown fix
 • **Heating issue** - radiators, pipes or system problems
 • **Plumbing problem** - leaks, blocked drains, taps or toilets
-Values: boilerInstall | boilerService | heating | plumbing.
+Values: boilerService | bathroomFitting | gasSafeCert | boilerInstall | heating | plumbing.
+IMPORTANT: "Boiler service" sets projectType=boilerService AND jobSubType=service. "Boiler repair" sets projectType=boilerService AND jobSubType=repair. Both skip the jobSubType question.
 
 === BOILER INSTALLATION (boilerInstall) ===
 1. property - "Is this for a home or a business?": • **Domestic (home)** • **Commercial (business)** -> domestic|commercial|not_sure
@@ -492,6 +541,21 @@ Values: boilerInstall | boilerService | heating | plumbing.
    • **Something else** - describe it briefly
    -> leaking|blocked|toilet|other
 
+=== GAS SAFETY CERTIFICATE / CP12 (gasSafeCert) ===
+1. property -> domestic|commercial|not_sure
+2. certScope - "How many gas appliances need certifying?":
+   • **Single appliance** - standard home with one boiler
+   • **Multiple appliances or HMO** - more than one appliance or a rental property with several gas points
+   -> single|multiple
+
+=== BATHROOM FITTING (bathroomFitting) ===
+1. property -> domestic|commercial|not_sure
+2. bathroomScope - "What level of work do you need?":
+   • **Fit supplied fixtures** - you supply the suite, we fit it (labour only)
+   • **Partial refit** - new fixtures plus tiling and plumbing alterations
+   • **Full renovation** - full strip-out, replumb, tiling and all fixtures supplied and fitted
+   -> fixtures|partial|full
+
 === ALL TYPES - AFTER THE ESSENTIALS ===
 timeline - "When would you like the work done?" -> t_asap|t_2weeks|t_month|t_planning
 
@@ -510,9 +574,10 @@ RULES
 
 HIDDEN STATE (REQUIRED IN EVERY REPLY)
 At the very end of EVERY reply, output the running state in this hidden block:
-<!--DATA:{"projectType":"","property":"","tier":"","jobSubType":"","heatingIssue":"","plumbingIssue":"","timeline":"","name":"","email":"","phone":"","postcode":""}-->
+<!--DATA:{"projectType":"","property":"","tier":"","jobSubType":"","heatingIssue":"","plumbingIssue":"","certScope":"","bathroomScope":"","timeline":"","name":"","email":"","phone":"","postcode":""}-->
 Fill in only what the customer has actually answered. NEVER guess.
-Allowed values: projectType: boilerInstall|boilerService|heating|plumbing; property: domestic|commercial|not_sure; tier: budget|mid|premium|not_sure; jobSubType: service|repair; heatingIssue: cold_rads|power_flush|new_rads|other; plumbingIssue: leaking|blocked|toilet|other; timeline: t_asap|t_2weeks|t_month|t_planning. The rest (name, email, phone, postcode) are free text.
+Allowed values: projectType: boilerInstall|boilerService|heating|plumbing|gasSafeCert|bathroomFitting; property: domestic|commercial|not_sure; tier: budget|mid|premium|not_sure; jobSubType: service|repair; heatingIssue: cold_rads|power_flush|new_rads|other; plumbingIssue: leaking|blocked|toilet|other; certScope: single|multiple; bathroomScope: fixtures|partial|full; timeline: t_asap|t_2weeks|t_month|t_planning. The rest (name, email, phone, postcode) are free text.
+SPECIAL CASE: if customer chose "Boiler service" as their answer to question 0, set projectType=boilerService AND jobSubType=service in the DATA block immediately. If they chose "Boiler repair", set projectType=boilerService AND jobSubType=repair. Do NOT ask jobSubType again in these cases.
 When every required field is filled, write a SHORT closing line (e.g. "Great, I'll put your estimate together now!") and still output the full DATA block.`;
 
 function systemPromptFor() { return SYSTEM_PROMPT; }
@@ -681,6 +746,12 @@ export default async function handler(request, response) {
         if (pending) {
             const v = mapAnswer(pending, question);
             if (v) determined[pending] = v;
+            // "Boiler repair" / "Boiler service" chips auto-fill jobSubType
+            if (pending === "projectType") {
+                const q = (question || "").trim().toLowerCase();
+                if (q === "boiler repair") determined["jobSubType"] = "repair";
+                else if (q === "boiler service") determined["jobSubType"] = "service";
+            }
         }
 
         const sel = mergeState(currentSel, baseSel, determined);
