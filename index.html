@@ -1890,18 +1890,28 @@ function showBookStep(n) {
   document.getElementById('book-s1').style.display = n === 1 ? '' : 'none';
   document.getElementById('book-s2').style.display = n === 2 ? '' : 'none';
 }
+// Maps a service card to the chatbot's estimate flow.
+// backendLabel MUST match a projectType option the widget/API understands.
+var ESTIMATE_SERVICES = {
+  'boiler-repair': { display: 'Boiler Repair',           backend: 'Boiler repair' },
+  'service':       { display: 'Boiler Service',          backend: 'Boiler service' },
+  'bathroom':      { display: 'Bathroom Fitting',        backend: 'Bathroom fitting' },
+  'certificate':   { display: 'Gas Safety Certificate',  backend: 'Gas safety certificate (CP12)' }
+};
 function selectService(type) {
   if (type === 'boiler-replace') {
     window.open('https://calendly.com/grantsplumbingandheating', '_blank');
     return;
   }
-  var labels = {
-    'boiler-repair': 'Boiler Repair',
-    'service': 'Boiler Service',
-    'bathroom': 'Bathroom Installation',
-    'certificate': 'Gas Safety Certificate (CP12)'
-  };
-  document.getElementById('book-s2-service').textContent = labels[type] || type;
+  // Estimate-able services -> jump straight into the chatbot estimate
+  var svc = ESTIMATE_SERVICES[type];
+  if (svc && typeof window.GRANTS_WIDGET_START_ESTIMATE === 'function') {
+    closeBookModal();
+    window.GRANTS_WIDGET_START_ESTIMATE(svc.backend, svc.display);
+    return;
+  }
+  // Fallback: original contact panel
+  document.getElementById('book-s2-service').textContent = (svc && svc.display) || type;
   showBookStep(2);
 }
 document.getElementById('bookModal').addEventListener('click', function(e) {

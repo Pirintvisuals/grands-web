@@ -58,6 +58,7 @@
   let conversationHistory = [];
   let convState = {};
   let started = false;
+  let introSuppressed = false;
   let thinkingEl = null;
   let progressFillEl = null, progressLabelEl = null, progressBarEl = null;
   let estimateBarEl = null;
@@ -314,6 +315,11 @@
     if (!started) {
       started = true;
       track("quote_started");
+
+      // When launched via a service card, skip the greeting + choice
+      // chips - the estimate is kicked off by GRANTS_WIDGET_START_ESTIMATE.
+      if (introSuppressed) return;
+
       addMessage("bot", t().greeting);
 
       // First-contact choice: estimate vs questions
@@ -548,6 +554,53 @@
   // Expose toggle for external buttons (mobile bar, etc.)
   window.GRANTS_WIDGET_TOGGLE = function() {
     if (container) toggleChat();
+  };
+
+  function resetConversation() {
+    conversationHistory = [];
+    convState = {};
+    quoteDone = false;
+    lastProgress = 0;
+    lastProgressTotal = 0;
+    lastEstimateText = null;
+    sending = false;
+    if (messagesContainer) messagesContainer.innerHTML = "";
+    if (estimateBarEl) estimateBarEl.style.display = "none";
+    if (progressFillEl) progressFillEl.style.width = "0%";
+    if (progressLabelEl) progressLabelEl.textContent = "";
+    if (progressBarEl) progressBarEl.classList.remove("visible", "complete");
+  }
+
+  // Launch straight into an estimate for a specific service.
+  // serviceLabel MUST match a projectType option the backend understands
+  // (e.g. "Boiler repair", "Boiler service", "Bathroom fitting",
+  //  "Gas safety certificate (CP12)"). displayLabel is what the user sees.
+  window.GRANTS_WIDGET_START_ESTIMATE = function(serviceLabel, displayLabel) {
+    if (!serviceLabel) return;
+    introSuppressed = true;
+
+    if (!chatWindow) {
+      openChat();
+    }
+
+    // Bring the window into view
+    chatWindow.style.display = "flex";
+    chatWindow.style.animation = "none";
+    void chatWindow.offsetWidth;
+    chatWindow.style.animation = "";
+    chatOpen = true;
+    hideTeaser();
+    const launcher = document.querySelector(".faq-chat-launcher");
+    if (launcher) launcher.classList.add("active");
+
+    // Fresh start for the chosen service
+    resetConversation();
+    addMessage("user", displayLabel || serviceLabel);
+    addMessage("bot", t().estimateGreeting);
+    sendMessage(serviceLabel, true);
+    track("intent_estimate", { preselect: serviceLabel });
+
+    setTimeout(() => inputElement && inputElement.focus(), 150);
   };
 
   function init() {
